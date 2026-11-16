@@ -156,10 +156,10 @@
       "description": "问题：合上保护套熄屏、或自动熄屏之后，第一次按电源键没有任何反应，必须按第二次才亮屏。\n\n原因：系统自带的 /usr/local/bin/tb-gnome-power-button.py 用 Mutter.DisplayConfig.PowerSaveMode 判断\"屏幕是否已经关掉\"。但本机的熄屏是由 gsd-power 直接关闭 DRM 输出、并通过背光控制脚本写 bl_power=4 完成的，这个 D-Bus 属性始终停在 0。于是脚本每次熄屏后的第一次按键都走\"关屏\"分支（屏幕本来就是黑的，看不出变化），第二次才走\"开屏\"分支。\n\n做法：不改只读的系统文件，而是用用户级同名 unit 覆盖 /etc/systemd/user 里的版本（systemd 用户级优先读 ~/.config/systemd/user，无需 root）。新脚本改用真实判据：/sys/class/drm/*-DSI-1/dpms 是否为 On，以及 /sys/class/backlight/sy7758-backlight/bl_power 是否为 0。短按仍是亮/熄屏切换，长按 1 秒仍是关机请求，两条路径共用同一判据，已验证都正确。\n\n安装后立即生效，不需要重启，也不影响 logind 与 GNOME 原有的抑制锁逻辑。",
       "device": "TB710FU",
       "status": "community-review",
-      "risk": "· 已去除 /run/user/1000 等硬编码，改用 $XDG_RUNTIME_DIR / $(id -u)。\n· 仅改动用户级文件：~/.local/bin/tb-power-key.py、~/.local/bin/tb-power-key-off、~/.config/systemd/user/tb-gnome-power-button.service（含 graphical-session.target.wants 软链）。不动 /usr、/etc，不用 root。\n· 背光设备优先使用 sy7758-backlight；若本机不是该名称，自动退到 /sys/class/backlight 下的第一个设备，都没有时只看 dpms（亮屏仍正常，熄屏判据变弱）；脚本在安装前会打印检测结果。\n· 回滚：运行 tb-power-key-off，会移除用户级覆盖并重启服务，回到系统自带脚本，行为恢复为\"按两次\"。\n· 已验证：FragmentPath 指向用户文件、服务 active、日志出现 ready (dpms judge, ver 2)。",
+      "risk": "· 已去除 /run/user/1000 等硬编码，改用 $XDG_RUNTIME_DIR / $(id -u)。\n· 仅改动用户级文件：~/.local/bin/tb-power-key.py、~/.local/bin/tb-power-key-off、~/.config/systemd/user/tb-gnome-power-button.service（含 graphical-session.target.wants 软链）。不动 /usr、/etc，不用 root。\n· 背光设备优先使用 sy7758-backlight；若本机不是该名称，自动退到 /sys/class/backlight 下的第一个设备，都没有时只看 dpms（亮屏仍正常，熄屏判据变弱）；脚本在安装前会打印检测结果。\n· 用法：TB710FU_FIX_ACTION=check 只读、不改动任何文件；apply（默认）安装并启用；rollback 回滚。找不到 DSI 输出的 dpms 节点时，check 与 apply 都以退出码 1 中止，不写入任何文件。\n· 若已存在与包内容不同的用户级 unit，apply 会先备份为 .bak-<时间戳>；重复 apply 不会重复备份，也不会覆盖你自己的备份。\n· 回滚：TB710FU_FIX_ACTION=rollback（或直接运行 tb-power-key-off，效果相同）。会取消开机自启、移除用户级 unit 与软链、重启服务回到系统自带脚本，并删除 ~/.local/bin 下的两个脚本；若此前 apply 曾备份过你自己的 unit，则优先还原那份而不是停用。\n· 已验证：FragmentPath 指向用户文件、服务 active、日志出现 ready (dpms judge, ver 2)。",
       "script": {
         "path": "contributions/power-key-single-press/script.sh",
-        "sha256": "11b27b19e8b72a035cece1afa8b9df094e7eafd422fd5e172d7e545b69121344",
+        "sha256": "2351d9d210d8f5a5922c1bf7b5cb042a2d094d316221287d54492358a44c417d",
         "requires_admin": false
       },
       "attachments": [
