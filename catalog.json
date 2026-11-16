@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "issues": [
+    {
+      "id": "system-info",
+      "title": "系统基本信息",
+      "description": "只读显示系统版本、内核与设备型号。",
+      "device": "TB710FU",
+      "status": "demo-read-only",
+      "script": {
+        "path": "scripts/system-info.sh",
+        "sha256": "e2a459c25157f227c25c8d913da51ff23ce62ed62f4d7b0a3f8ff5afef504520",
+        "requires_admin": false
+      },
+      "risk": "只读示例，不修复系统。"
+    },
+    {
+      "id": "admin-check",
+      "title": "管理员权限示例",
+      "description": "只读检查管理员权限流程。",
+      "device": "TB710FU",
+      "status": "demo-read-only",
+      "script": {
+        "path": "scripts/admin-check.sh",
+        "sha256": "dc8789a2fec557a959600a7bf1e1b1764a52a95e2cfaada5dc2ed82baba61127",
+        "requires_admin": true
+      },
+      "risk": "只读示例，不修复系统。"
+    }
+  ]
+}
