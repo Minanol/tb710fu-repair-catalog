@@ -2,32 +2,6 @@
   "schema_version": 1,
   "issues": [
     {
-      "id": "system-info",
-      "title": "系统基本信息",
-      "description": "只读显示系统版本、内核与设备型号。",
-      "device": "TB710FU",
-      "status": "demo-read-only",
-      "script": {
-        "path": "scripts/system-info.sh",
-        "sha256": "e2a459c25157f227c25c8d913da51ff23ce62ed62f4d7b0a3f8ff5afef504520",
-        "requires_admin": false
-      },
-      "risk": "只读示例，不修复系统。"
-    },
-    {
-      "id": "admin-check",
-      "title": "管理员权限示例",
-      "description": "只读检查管理员权限流程。",
-      "device": "TB710FU",
-      "status": "demo-read-only",
-      "script": {
-        "path": "scripts/admin-check.sh",
-        "sha256": "dc8789a2fec557a959600a7bf1e1b1764a52a95e2cfaada5dc2ed82baba61127",
-        "requires_admin": true
-      },
-      "risk": "只读示例，不修复系统。"
-    },
-    {
       "id": "snap-userspace-confinement-repair",
       "title": "Snap 用户态严格隔离修复与验证",
       "description": "适用于 TB710FU Ubuntu ARM64/systemd，当前内核已具备 AppArmor、Seccomp、命名空间、SquashFS xattrs 及 LZO/LZ4 等功能，但 Snap 报 partial、snap-confine 能力异常或 AppArmor 默认 ABI 不兼容的情况。主入口通过 TB710FU_ATTACHMENTS_DIR 加载单文件 Python 修复器，不依赖当前目录。需要 Python 3、管理员权限，首次安装缺失依赖或 hello-world 需要联网。\n\n执行会先检查运行内核，缺功能时在修改配置前停止，不能替代内核升级。通过后备份配置，安装缺失的用户态工具，为已验证 TB710FU 7.2 内核设置默认 AppArmor ABI，按 snapd 包清单恢复文件能力，启动服务，并以普通用户实测 strict/full、hello-world、Seccomp、文件/网络拒绝。默认普通用户为 sudo 原用户或 ubuntu，可通过 TB710FU_SNAP_USER 指定。不会自动安装 IDEA，不添加 IDEA 专项设置。\n\n实机验证：Ubuntu 26.04.1 ARM64、7.2.6-tb710fu-snap1 上通过了配置修复、普通用户运行、AppArmor 实际文件/网络拒绝及 Seccomp 检查，16 项 apt hold 保留。旧内核缺功能的拒绝路径亦已检查。脚本不刷写 boot/GPT、不重启、不改 USB/摄像头/桌面输入法。旧内核请先使用“Snap 内核完整升级”条目。",
