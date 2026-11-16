@@ -1,17 +1,51 @@
 #!/bin/sh
-# touch-window-grip 启动器：等 mutter 的 Xwayland auth 文件就绪，再带 XAUTHORITY 启动。
+# touch-window-grip 启动器：等 Xwayland 就绪，并挑一个真正能连上的 auth 文件。
 # 单独成文件的原因：systemd 会在 ExecStart 里做 $VAR 展开，把 shell 变量
 # 和 $(( )) 算术吃掉，逻辑放在脚本里才不会被打断。
+#
+# 为什么不能"取第一个"：/run/user/<uid>/ 下会累积多个 .mutter-Xwaylandauth.*
+# （每次会话一个，旧的不会自动清理）。按字母序取第一个会拿到上次会话的旧
+# cookie，实测报 "Invalid MIT-MAGIC-COOKIE-1 key" 并以状态 2 退出，在
+# Restart=on-failure 下变成 activating/auto-restart 循环。
+# 因此这里：优先用已有的 $XAUTHORITY，其次按修改时间从新到旧，并且对每个候选
+# 真正调一次 XOpenDisplay 试连，连上了才用。
 set -u
 
+RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# 试连：能拿到 Display* 就算这个 cookie 可用。
+# libX11 缺失时返回 0（无从判断，退化为"信任候选文件"）。
+probe() {
+    XAUTHORITY="$1" /usr/bin/python3 -c '
+import ctypes, sys
+try:
+    lib = ctypes.CDLL("libX11.so.6")
+except OSError:
+    sys.exit(0)
+lib.XOpenDisplay.restype = ctypes.c_void_p
+sys.exit(0 if lib.XOpenDisplay(None) else 1)
+' 2>/dev/null
+}
+
+launch() {
+    [ -n "${1:-}" ] && export XAUTHORITY="$1"
+    exec /usr/bin/python3 "${HOME}/.local/bin/touch-window-grip"
+}
+
+# 没有 DISPLAY 时试连必然失败，别白等 60 秒：取最新的一个，把真实报错留给主程序。
+if [ -z "${DISPLAY:-}" ]; then
+    launch "$(ls -t "$RUNTIME"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)"
+fi
+
 i=0
-A=""
 while [ "$i" -lt 30 ]; do
-    A=$(ls "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
-    [ -n "$A" ] && break
+    for A in ${XAUTHORITY:-} $(ls -t "$RUNTIME"/.mutter-Xwaylandauth.* 2>/dev/null); do
+        [ -r "$A" ] || continue
+        probe "$A" && launch "$A"
+    done
     i=$((i + 1))
     sleep 2
 done
 
-[ -n "$A" ] && export XAUTHORITY="$A"
-exec /usr/bin/python3 "${HOME}/.local/bin/touch-window-grip"
+# 一个都没连上：仍按最新的试一次，让 journal 里留下真实错误而不是静默退出。
+launch "$(ls -t "$RUNTIME"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)"
