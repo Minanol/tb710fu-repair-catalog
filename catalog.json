@@ -149,6 +149,33 @@
           "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
         }
       ]
+    },
+    {
+      "id": "power-key-single-press",
+      "title": "电源键按一次即亮屏（熄屏判据修正）",
+      "description": "问题：合上保护套熄屏、或自动熄屏之后，第一次按电源键没有任何反应，必须按第二次才亮屏。\n\n原因：系统自带的 /usr/local/bin/tb-gnome-power-button.py 用 Mutter.DisplayConfig.PowerSaveMode 判断\"屏幕是否已经关掉\"。但本机的熄屏是由 gsd-power 直接关闭 DRM 输出、并通过背光控制脚本写 bl_power=4 完成的，这个 D-Bus 属性始终停在 0。于是脚本每次熄屏后的第一次按键都走\"关屏\"分支（屏幕本来就是黑的，看不出变化），第二次才走\"开屏\"分支。\n\n做法：不改只读的系统文件，而是用用户级同名 unit 覆盖 /etc/systemd/user 里的版本（systemd 用户级优先读 ~/.config/systemd/user，无需 root）。新脚本改用真实判据：/sys/class/drm/*-DSI-1/dpms 是否为 On，以及 /sys/class/backlight/sy7758-backlight/bl_power 是否为 0。短按仍是亮/熄屏切换，长按 1 秒仍是关机请求，两条路径共用同一判据，已验证都正确。\n\n安装后立即生效，不需要重启，也不影响 logind 与 GNOME 原有的抑制锁逻辑。",
+      "device": "TB710FU",
+      "status": "community-review",
+      "risk": "· 已去除 /run/user/1000 等硬编码，改用 $XDG_RUNTIME_DIR / $(id -u)。\n· 仅改动用户级文件：~/.local/bin/tb-power-key.py、~/.local/bin/tb-power-key-off、~/.config/systemd/user/tb-gnome-power-button.service（含 graphical-session.target.wants 软链）。不动 /usr、/etc，不用 root。\n· 背光设备优先使用 sy7758-backlight；若本机不是该名称，自动退到 /sys/class/backlight 下的第一个设备，都没有时只看 dpms（亮屏仍正常，熄屏判据变弱）；脚本在安装前会打印检测结果。\n· 回滚：运行 tb-power-key-off，会移除用户级覆盖并重启服务，回到系统自带脚本，行为恢复为\"按两次\"。\n· 已验证：FragmentPath 指向用户文件、服务 active、日志出现 ready (dpms judge, ver 2)。",
+      "script": {
+        "path": "contributions/power-key-single-press/script.sh",
+        "sha256": "11b27b19e8b72a035cece1afa8b9df094e7eafd422fd5e172d7e545b69121344",
+        "requires_admin": false
+      },
+      "attachments": [
+        {
+          "path": "contributions/power-key-single-press/attachments/tb-power-key.py",
+          "sha256": "abd0175b6578d2bdcb7010b18c39c1e1a2054570fc0c0a47084f8552bfaed72c"
+        },
+        {
+          "path": "contributions/power-key-single-press/attachments/tb-power-key-off",
+          "sha256": "92256e5cf01fa9901b9306f7b105e6d1c1b648f58cb40687e6cb3ea0a9cae1ad"
+        },
+        {
+          "path": "contributions/power-key-single-press/attachments/tb-gnome-power-button.service",
+          "sha256": "23633ede944d1f35c1c015bf548e4e12414d77ea3640b06a39b29417c04232af"
+        }
+      ]
     }
   ]
 }
