@@ -1,0 +1,22 @@
+[Unit]
+Description=Touch window grip — 手指拖动/缩放无边框 X11 窗口（Electron 等）
+Documentation=file:%h/.local/bin/touch-window-grip
+After=graphical-session.target
+PartOf=graphical-session.target
+# 登录瞬间 Xwayland 可能还没就绪，前几次启动失败属正常；不要因此放弃重试。
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Environment=DISPLAY=:0
+Environment=PYTHONUNBUFFERED=1
+# 旧实现（如各自带抓取的守护）会持有同一窗口的触摸抓取，不先退场新的抓不到。
+# 方括号写法避免 pkill 匹配到自己。
+ExecStartPre=-/usr/bin/pkill -f '[t]ouch-window-grip'
+# 启动器负责等待 Xwayland auth 就绪（最多 60 秒）后再 exec 主程序。
+ExecStart=%h/.local/bin/touch-window-grip-launch
+Restart=on-failure
+RestartSec=8
+
+[Install]
+WantedBy=graphical-session.target
