@@ -22,6 +22,10 @@ EVENT = struct.Struct('@llHHi')
 POWER = 116
 LONG_SECONDS = 1.0
 BACKLIGHT = Path('/sys/class/backlight/sy7758-backlight')
+if not BACKLIGHT.is_dir():
+    _found = sorted(glob.glob('/sys/class/backlight/*'))
+    if _found:
+        BACKLIGHT = Path(_found[0])
 
 
 def call(*args):

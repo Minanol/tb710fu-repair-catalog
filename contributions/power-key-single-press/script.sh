@@ -25,7 +25,13 @@ if [ ! -e /sys/class/drm/card1-DSI-1/dpms ] && ! ls /sys/class/drm/*-DSI-1/dpms 
     exit 1
 fi
 ls /sys/class/drm/*-DSI-1/dpms >/dev/null 2>&1 && echo "  ✓ dpms: $(ls /sys/class/drm/*-DSI-1/dpms | head -1)"
-[ -d /sys/class/backlight/sy7758-backlight ] && echo "  ✓ 背光: sy7758-backlight" || echo "  ! 未找到 sy7758-backlight，脚本会退化为只看 dpms"
+if [ -d /sys/class/backlight/sy7758-backlight ]; then
+    echo "  ✓ 背光: sy7758-backlight"
+elif ls /sys/class/backlight/*/bl_power >/dev/null 2>&1; then
+    echo "  ! 未找到 sy7758-backlight，改用 $(ls -d /sys/class/backlight/*/ | head -1)"
+else
+    echo "  ! 无可用背光设备，脚本会退化为只看 dpms"
+fi
 
 echo "== 1. 安装脚本 =="
 mkdir -p "$BIN" "$UD" "$WANTS"
@@ -61,7 +67,11 @@ python3 - <<'PY' || true
 import glob, pathlib
 for p in sorted(glob.glob('/sys/class/drm/*-DSI-1/dpms')):
     print('  dpms =', pathlib.Path(p).read_text().strip(), '(', p, ')')
-bl = pathlib.Path('/sys/class/backlight/sy7758-backlight/bl_power')
+bl = pathlib.Path('/sys/class/backlight/sy7758-backlight')
+if not bl.is_dir():
+    found = sorted(glob.glob('/sys/class/backlight/*'))
+    bl = pathlib.Path(found[0]) if found else bl
+bl = bl / 'bl_power'
 if bl.exists():
     print('  bl_power =', bl.read_text().strip())
 PY
