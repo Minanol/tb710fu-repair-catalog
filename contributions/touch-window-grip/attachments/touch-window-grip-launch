@@ -1,0 +1,17 @@
+#!/bin/sh
+# touch-window-grip 启动器：等 mutter 的 Xwayland auth 文件就绪，再带 XAUTHORITY 启动。
+# 单独成文件的原因：systemd 会在 ExecStart 里做 $VAR 展开，把 shell 变量
+# 和 $(( )) 算术吃掉，逻辑放在脚本里才不会被打断。
+set -u
+
+i=0
+A=""
+while [ "$i" -lt 30 ]; do
+    A=$(ls "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
+    [ -n "$A" ] && break
+    i=$((i + 1))
+    sleep 2
+done
+
+[ -n "$A" ] && export XAUTHORITY="$A"
+exec /usr/bin/python3 "${HOME}/.local/bin/touch-window-grip"
